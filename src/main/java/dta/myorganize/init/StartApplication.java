@@ -1,0 +1,57 @@
+package dta.myorganize.init;
+
+import dta.myorganize.enums.RoleName;
+import dta.myorganize.model.Role;
+import dta.myorganize.model.User;
+import dta.myorganize.service.RoleService;
+import dta.myorganize.service.UserService;
+import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+@Component
+public class StartApplication implements CommandLineRunner {
+    @Autowired
+    private UserService userService;
+    @Autowired
+    private RoleService roleService;
+    @Autowired
+    private PasswordEncoder encoder;
+
+    @Override
+    public void run(String... args) throws Exception {
+
+        List<RoleName> roleNames = Arrays.asList(RoleName.values());//Lista com as roles a serem criadas
+        Role roleAdmin = new Role();//Role admin a ser usada no usuário admin
+        for(int i = 0; i < roleNames.size() ; i++) {
+            Optional<Role> roleOptional = roleService.findByRoleName(roleNames.get(i));//verifica se já existe no banco
+            Role role = new Role();//role auxilizar
+            if (roleOptional.isEmpty()) {//se não achou cria
+                role.setRoleName(roleNames.get(i));
+                if (roleNames.get(i) == RoleName.ROLE_ADMIN) {//se for adim já cria e salva no role admin
+                    roleAdmin = roleService.create(role);
+                } else {
+                    roleService.create(role);//se não, só cria
+                }
+            } else {
+                if (roleNames.get(i) == RoleName.ROLE_ADMIN) roleAdmin = roleOptional.get();//se achou e for admin salva na role admin
+            }
+        }
+
+        Optional<User> userOptional = userService.findByUsername("admin");
+        if(userOptional.isEmpty()){
+            User user = new User();
+            user.setName("administrador");
+            user.setUsername("admin");
+            user.setPassword(encoder.encode("admin123"));
+            user.setEmail("admin@admin.com.br");
+            user.getRoles().add(roleAdmin);
+            userService.createStart(user);
+        }
+    }
+}
